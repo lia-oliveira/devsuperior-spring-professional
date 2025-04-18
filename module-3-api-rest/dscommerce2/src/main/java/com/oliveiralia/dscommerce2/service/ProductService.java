@@ -9,6 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.oliveiralia.dscommerce2.dto.ProductDTO;
 import com.oliveiralia.dscommerce2.entities.Product;
 import com.oliveiralia.dscommerce2.repositories.ProductRepository;
+import com.oliveiralia.dscommerce2.service.exceptions.ResourceNotFoundException;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class ProductService {
@@ -24,7 +27,8 @@ public class ProductService {
 	
 	@Transactional(readOnly = true)
 	public ProductDTO findById(Long id) {
-		Product product = repository.findById(id).get();
+		Product product = repository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado."));
 		return new ProductDTO(product);		
 	}
 	
@@ -36,29 +40,44 @@ public class ProductService {
 		return new ProductDTO(entity);
 	}
 	
-	@Transactional
+	/*@Transactional
 	public ProductDTO update(Long id, ProductDTO dto) {		
 		Product entity = repository.getReferenceById(id);
 		copyDtoToEntity(dto, entity);		
 		entity = repository.save(entity);		
 		return new ProductDTO(entity);		
+	}*/
+	
+	@Transactional
+	public ProductDTO update(Long id, ProductDTO dto) {
+		try {
+			Product entity = repository.getReferenceById(id);
+			copyDtoToEntity(dto, entity);		
+			entity = repository.save(entity);		
+			return new ProductDTO(entity);
+		} catch (EntityNotFoundException e){
+			throw new ResourceNotFoundException("Recurso não encontrado");
+		}				
 	}
+	
+	/*@Transactional
+	public void delete(Long id) {
+		repository.deleteById(id);	
+	}*/
 	
 	@Transactional
 	public void delete(Long id) {
-		repository.deleteById(id);	
+		if(!repository.existsById(id)) {
+			throw new ResourceNotFoundException("Recurso não encontrado");
+		}		
+		repository.deleteById(id);
 	}
 
 	private void copyDtoToEntity(ProductDTO dto, Product entity) {
 		entity.setName(dto.getName());
 		entity.setDescription(dto.getDescription());
 		entity.setPrice(dto.getPrice());
-		entity.setImgUrl(dto.getImgUrl());
-		
-	}
-	
-	
-	
-	
+		entity.setImgUrl(dto.getImgUrl());		
+	}	
 
 }
